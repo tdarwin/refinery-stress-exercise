@@ -1,0 +1,69 @@
+# Self-contained stack for the FRE technical exercise.
+#
+#   docker compose up
+#
+# Brings up three services:
+#   - refinery:  a low-resource Refinery (capped at 896 MiB) — the thing to crash
+#   - generator: runs once, builds telemetry from generator-baseline.yaml
+#   - sender:    replays it to Refinery at a fixed 4000 events/sec
+#
+# The generator and sender use the published release image, so nothing needs to
+# be built or installed locally. Keep the Refinery config and its mem_limit fixed
+# across runs — crashing THIS envelope by reshaping the telemetry is the exercise.
+
+services:
+  refinery:
+    image: honeycombio/refinery:latest
+    # A hard container memory limit so the OOMKill is real and observable.
+    mem_limit: 896m
+    memswap_limit: 896m
+    ports:
+      - "4317:4317"   # OTLP/gRPC (sender connects here)
+      - "8080:8080"   # OTLP/HTTP + Honeycomb events
+    volumes:
+      - ./refinery-config.yaml:/etc/refinery/config.yaml:ro
+      - ./refinery-rules.yaml:/etc/refinery/rules.yaml:ro
+    command: ["-c", "/etc/refinery/config.yaml", "-r", "/etc/refinery/rules.yaml"]
+    environment:
+      # Reused by Refinery to forward kept traces upstream (optional for the
+      # crash test — assembly pressure happens regardless of upstream success).
+      HONEYCOMB_API_KEY: "${HONEYCOMB_API_KEY:-}"
+    restart: "no"
+
+  # Runs once to build the telemetry templates into the shared volume, then exits.
+  generator:
+    image: ghcr.io/tdarwin/telemetry-gen-and-send:0.5.0
+    restart: "no"
+    command:
+      - telemetry-generator
+      - --config
+      - /config/generator-baseline.yaml
+      - --output-dir
+      - /data/generated
+    volumes:
+      - telemetry-data:/data
+      - ./:/config:ro
+    healthcheck:
+      disable: true
+
+  # Waits for the generator to finish and Refinery to be up, then sends.
+  sender:
+    image: ghcr.io/tdarwin/telemetry-gen-and-send:0.5.0
+    restart: "no"
+    command:
+      - telemetry-sender
+      - --config
+      - /config/sender-config.yaml
+    volumes:
+      - telemetry-data:/data:ro
+      - ./:/config:ro
+    environment:
+      HONEYCOMB_API_KEY: "${HONEYCOMB_API_KEY:-}"
+    depends_on:
+      generator:
+        condition: service_completed_successfully
+      refinery:
+        condition: service_started
+
+volumes:
+  telemetry-data:

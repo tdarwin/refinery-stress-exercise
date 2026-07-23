@@ -1,0 +1,11 @@
+# Local secrets — never commit (use .env.TEMPLATE as the starting point)
+.env
+.env.local
+
+# Generated telemetry output (only created if you run the tools as local binaries;
+# the compose stack keeps templates in a named volume instead)
+generated/
+
+# Attack ("answer key") generator configs — kept locally for testing, never
+# published so the exercise isn't spoiled.
+generator-attack-*.yaml

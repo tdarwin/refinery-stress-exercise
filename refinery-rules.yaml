@@ -1,0 +1,10 @@
+# Refinery sampling rules for the exercise.
+#
+# A keep-everything deterministic sampler. Sampling happens AFTER a trace is
+# assembled in the cache, so keeping 100% maximizes the assembly/memory work —
+# which is exactly the pressure the exercise is about. Keep this fixed too.
+RulesVersion: 2
+Samplers:
+  __default__:
+    DeterministicSampler:
+      SampleRate: 10

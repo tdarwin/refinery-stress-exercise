@@ -1,0 +1,40 @@
+# BASELINE telemetry shape for the exercise.
+#
+# Normal, well-behaved traces: every trace has a root that arrives with the rest
+# of the trace, spans are small, no gigatraces. Sent through sender-config.yaml
+# at 4000 events/sec, this should keep the low-resource Refinery healthy — no
+# stress relief, no OOMKill.
+#
+# All five generator configs write to the SAME output path so the fixed sender
+# config never changes:
+output:
+  directory: "./generated"
+  prefix: "exercise"
+
+traces:
+  count: 2000
+  spans:
+    avg_per_trace: 20
+    std_dev: 5
+  services:
+    count: 8
+    names:
+      - "api-gateway"
+      - "user-service"
+      - "order-service"
+      - "payment-service"
+      - "inventory-service"
+      - "cache-service"
+      - "coupon-service"
+      - "ads-service"
+    ingress:
+      single: false
+  custom_attributes:
+    # Legacy behavior: a few small random attributes on ~30% of spans.
+    count: 20
+
+metrics:
+  metric_count: 0
+
+logs:
+  count: 0

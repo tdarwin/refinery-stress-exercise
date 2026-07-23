@@ -1,0 +1,42 @@
+# FIXED sender configuration for the exercise.
+#
+# This file does NOT change between the baseline and attack runs. It always
+# reads ./generated/exercise-traces.pb and sends at the SAME events-per-second.
+# You swap which generator config you run (each writes to the same output
+# path), regenerate, and re-send with this unchanged config. Because the rate
+# limiter throttles by span count, events/sec is held constant no matter how the
+# telemetry is shaped — only the shape of each event changes.
+
+input:
+  traces: "./generated/exercise-traces.pb"
+
+otlp:
+  # Refinery's OTLP/gRPC listener, reachable by service name on the compose
+  # network. (If you run the sender as a local binary instead, use localhost:4317.)
+  endpoint: "refinery:4317"
+  insecure: true
+  headers:
+    # Reused by Refinery to forward kept traces upstream. The crash reproduces
+    # even without a valid key (assembly happens before forwarding).
+    x-honeycomb-team: "${HONEYCOMB_API_KEY}"
+
+sending:
+  rate_limit:
+    # The constant. Baseline and every attack run at this exact rate.
+    events_per_second: 4000
+  batch_size:
+    traces: 100
+  concurrency: 8
+  # Long enough to build up cache pressure and (for late-root) drain deferred
+  # roots. multiplier 0 = replay the templates until the duration elapses.
+  duration: "10m"
+  multiplier: 0
+
+timestamps:
+  jitter_ms: 1000
+  backdate_ms: 0
+
+  # deferred (late-root) scheduler defaults are fine; shown here for reference:
+  # deferred:
+  #   drain_timeout: "120s"   # grace period to flush late roots on shutdown
+  #   max_pending: 100000
