@@ -30,6 +30,9 @@ AccessKeys:
   # Accept whatever API key the sender presents (it is reused to forward
   # upstream). Set false so you don't have to enumerate keys for the exercise.
   AcceptOnlyListedKeys: false
+
+RefineryTelemetry:
+  # Add helpful metadata to kept traces (span count + sampling rule reason).
   AddSpanCountToRoot: true
   AddRuleReasonToTrace: true
 
@@ -66,12 +69,24 @@ StressRelief:
   DeactivationLevel: 75
 
 Logger:
-  Type: stdout
+  # Ship Refinery's own logs to Honeycomb (stress-relief activation, errors,
+  # etc.) so you can see them alongside the telemetry. The API key comes from
+  # the REFINERY_HONEYCOMB_API_KEY env var (set in docker-compose.yaml from your
+  # .env) — Refinery reads keys from the environment, not from ${...} in YAML.
+  Type: honeycomb
   Level: info
 
+HoneycombLogger:
+  # APIKey is supplied via REFINERY_HONEYCOMB_API_KEY (see docker-compose.yaml).
+  APIHost: "https://api.honeycomb.io"
+  Dataset: "Refinery Logs"
+
 OTelMetrics:
-  # Optional: emit Refinery's own metrics so you can watch memory_heap_allocation,
-  # collector_cache_eviction, and stress_level. Point Dataset/APIKey at your env.
-  Enabled: false
-  # APIKey: "${HONEYCOMB_API_KEY}"
-  # Dataset: "refinery-exercise-metrics"
+  # Emit Refinery's own metrics to Honeycomb so you can watch
+  # memory_heap_allocation vs memory_limit, collector_cache_eviction, and the
+  # stress level. APIKey is supplied via REFINERY_HONEYCOMB_API_KEY.
+  Enabled: true
+  APIHost: "https://api.honeycomb.io"
+  Dataset: "Refinery Metrics"
+  # Report frequently so you see pressure build up quickly during a run.
+  ReportingInterval: "10s"

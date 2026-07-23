@@ -25,9 +25,11 @@ services:
       - ./refinery-rules.yaml:/etc/refinery/rules.yaml:ro
     command: ["-c", "/etc/refinery/config.yaml", "-r", "/etc/refinery/rules.yaml"]
     environment:
-      # Reused by Refinery to forward kept traces upstream (optional for the
-      # crash test — assembly pressure happens regardless of upstream success).
-      HONEYCOMB_API_KEY: "${HONEYCOMB_API_KEY:-}"
+      # Refinery reads its Honeycomb key from the environment. This one key is
+      # used to (a) forward kept traces upstream and (b) send Refinery's own
+      # metrics ("Refinery Metrics") and logs ("Refinery Logs") to the same
+      # team/environment. Required — set HONEYCOMB_API_KEY in your .env.
+      REFINERY_HONEYCOMB_API_KEY: "${HONEYCOMB_API_KEY:?set HONEYCOMB_API_KEY in .env (see .env.TEMPLATE)}"
     restart: "no"
 
   # Runs once to build the telemetry templates into the shared volume, then exits.
@@ -58,7 +60,9 @@ services:
       - telemetry-data:/data:ro
       - ./:/config:ro
     environment:
-      HONEYCOMB_API_KEY: "${HONEYCOMB_API_KEY:-}"
+      # Sent as the x-honeycomb-team header so Refinery can forward the kept
+      # traces to your team/environment. Required — set it in your .env.
+      HONEYCOMB_API_KEY: "${HONEYCOMB_API_KEY:?set HONEYCOMB_API_KEY in .env (see .env.TEMPLATE)}"
     depends_on:
       generator:
         condition: service_completed_successfully
