@@ -23,8 +23,11 @@ GRPCServerParameters:
   # OTLP/gRPC ingest — this is what the telemetry-sender connects to.
   Enabled: true
   ListenAddr: "0.0.0.0:4317"
-  # Allow large export messages; the sender chunks traces at 10k spans/batch.
-  MaxRecvMsgSize: "15MB"
+  # Accept large OTLP batches. Fat-span telemetry produces multi-MB batches
+  # (tens of MB), and we want Refinery to ingest and cache them so the pressure
+  # shows up as memory/stress, not as a gRPC "message larger than max" rejection
+  # on the sender. Keep this generous.
+  MaxRecvMsgSize: "256MB"
 
 AccessKeys:
   # Accept whatever API key the sender presents (it is reused to forward
