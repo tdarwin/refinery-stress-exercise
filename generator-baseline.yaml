@@ -30,7 +30,6 @@ traces:
     ingress:
       single: false
   custom_attributes:
-    # Legacy behavior: a few small random attributes on ~30% of spans.
     count: 20
 
 metrics:

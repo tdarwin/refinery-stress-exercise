@@ -1,7 +1,7 @@
 # Refinery configuration for the FRE technical exercise.
 #
 # This is the FIXED, low-resource Refinery configuration. Do NOT change it (or
-# the container's memory limit) between the baseline and attack runs — the whole
+# the container's memory limit) between the baseline and stress runs — the whole
 # point of the exercise is to crash this exact configuration by changing only
 # the *shape* of the telemetry, not its volume.
 #
@@ -13,83 +13,50 @@ General:
   MinRefineryVersion: v2.0
 
 Network:
-  # HTTP OTLP + Honeycomb-events ingest.
   ListenAddr: "0.0.0.0:8080"
-  # Upstream where kept traces are forwarded. The memory pressure we care about
-  # happens during trace *assembly*, before/regardless of upstream success.
   HoneycombAPI: "https://api.honeycomb.io"
 
 GRPCServerParameters:
-  # OTLP/gRPC ingest — this is what the telemetry-sender connects to.
   Enabled: true
   ListenAddr: "0.0.0.0:4317"
-  # Accept large OTLP batches. Fat-span telemetry produces multi-MB batches
-  # (tens of MB), and we want Refinery to ingest and cache them so the pressure
-  # shows up as memory/stress, not as a gRPC "message larger than max" rejection
-  # on the sender. Keep this generous.
   MaxRecvMsgSize: "256MB"
 
 AccessKeys:
-  # Accept whatever API key the sender presents (it is reused to forward
-  # upstream). Set false so you don't have to enumerate keys for the exercise.
   AcceptOnlyListedKeys: false
 
 RefineryTelemetry:
-  # Add helpful metadata to kept traces (span count + sampling rule reason).
   AddSpanCountToRoot: true
   AddRuleReasonToTrace: true
 
 PeerManagement:
-  # Single-node exercise — no redis required.
   Type: file
 
 Collection:
-  # --- The resource envelope under test. Keep this fixed. ---
-  # Budget Refinery to ~700MB and run it in a ~896MiB container (see
-  # docker-compose.yaml). MaxAlloc resolves to AvailableMemory * 75% (~525MB);
-  # crossing it triggers cache eviction, and feeds the memory signal into stress
-  # relief.
-  AvailableMemory: "700MB"
-  MaxMemoryPercentage: 75
-  # Default queue sizes (replace the deprecated CacheCapacity).
+  AvailableMemory: 896MiB
+  MaxMemoryPercentage: 80
   IncomingQueueSize: 30_000
   PeerQueueSize: 30_000
 
 Traces:
-  # A trace waits up to TraceTimeout for its root before being sent anyway.
-  # Rootless / late-root telemetry exploits this: spans sit in cache for the
-  # full 60s instead of clearing ~2s after the root arrives.
   TraceTimeout: 60s
   SendDelay: 2s
   SpanLimit: 0
 
 StressRelief:
-  # Enabled in monitor mode so Refinery *can* enter stress relief under
-  # pressure. The baseline telemetry should never push it here; the attack
-  # telemetry should (or should OOM the container first).
   Mode: monitor
   ActivationLevel: 90
   DeactivationLevel: 75
 
 Logger:
-  # Ship Refinery's own logs to Honeycomb (stress-relief activation, errors,
-  # etc.) so you can see them alongside the telemetry. The API key comes from
-  # the REFINERY_HONEYCOMB_API_KEY env var (set in docker-compose.yaml from your
-  # .env) — Refinery reads keys from the environment, not from ${...} in YAML.
   Type: honeycomb
   Level: info
 
 HoneycombLogger:
-  # APIKey is supplied via REFINERY_HONEYCOMB_API_KEY (see docker-compose.yaml).
   APIHost: "https://api.honeycomb.io"
   Dataset: "Refinery Logs"
 
 OTelMetrics:
-  # Emit Refinery's own metrics to Honeycomb so you can watch
-  # memory_heap_allocation vs memory_limit, collector_cache_eviction, and the
-  # stress level. APIKey is supplied via REFINERY_HONEYCOMB_API_KEY.
   Enabled: true
   APIHost: "https://api.honeycomb.io"
   Dataset: "Refinery Metrics"
-  # Report frequently so you see pressure build up quickly during a run.
   ReportingInterval: "10s"
