@@ -34,7 +34,7 @@ services:
 
   # Runs once to build the telemetry templates into the shared volume, then exits.
   generator:
-    image: ghcr.io/tdarwin/telemetry-gen-and-send:0.5.0
+    image: ghcr.io/tdarwin/telemetry-gen-and-send:0.6.0
     restart: "no"
     command:
       - telemetry-generator
@@ -50,7 +50,7 @@ services:
 
   # Waits for the generator to finish and Refinery to be up, then sends.
   sender:
-    image: ghcr.io/tdarwin/telemetry-gen-and-send:0.5.0
+    image: ghcr.io/tdarwin/telemetry-gen-and-send:0.6.0
     restart: "no"
     command:
       - telemetry-sender
